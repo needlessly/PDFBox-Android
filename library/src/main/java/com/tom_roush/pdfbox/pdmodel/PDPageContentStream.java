@@ -46,6 +46,7 @@ import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import com.tom_roush.pdfbox.pdmodel.graphics.image.PDInlineImage;
 import com.tom_roush.pdfbox.pdmodel.graphics.shading.PDShading;
 import com.tom_roush.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState;
+import com.tom_roush.pdfbox.pdmodel.graphics.state.RenderingMode;
 import com.tom_roush.pdfbox.pdmodel.interactive.annotation.PDAppearanceStream;
 import com.tom_roush.pdfbox.util.Charsets;
 import com.tom_roush.pdfbox.util.Matrix;
@@ -2135,4 +2136,18 @@ public final class PDPageContentStream implements Closeable
     {
         return val < 0 || val > 1;
     }
+
+    /**
+	 * Set the text rendering mode. This determines whether showing text shall cause glyph outlines
+	 * to be stroked, filled, used as a clipping boundary, or some combination of the three.
+	 *
+	 * @param rm The text rendering mode.
+	 * @throws IOException If the content stream could not be written.
+	 */
+	public void setRenderingMode(RenderingMode rm) throws IOException
+	{
+		writeOperand(rm.intValue());
+		writeOperator("Tr");
+	}
+
 }
