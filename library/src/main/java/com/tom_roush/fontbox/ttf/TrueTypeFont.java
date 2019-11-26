@@ -24,8 +24,10 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.tom_roush.fontbox.FontBoxFont;
 import com.tom_roush.fontbox.util.BoundingBox;
@@ -40,9 +42,10 @@ public class TrueTypeFont implements FontBoxFont, Closeable
     private float version;
     private int numberOfGlyphs = -1;
     private int unitsPerEm = -1;
-    protected Map<String,TTFTable> tables = new HashMap<String,TTFTable>();
+    protected Map<String, TTFTable> tables = new HashMap<>();
     private final TTFDataStream data;
     private Map<String, Integer> postScriptNames;
+    private Set<Integer> supportedCharCodes;
 
     /**
      * Constructor.  Clients should use the TTFParser to create a new TrueTypeFont object.
@@ -51,7 +54,29 @@ public class TrueTypeFont implements FontBoxFont, Closeable
      */
     TrueTypeFont(TTFDataStream fontData)
     {
-        data = fontData;
+        this.data = fontData;
+    }
+
+    TrueTypeFont(TTFDataStream fontData, Set<Character> characterSet)
+    {
+        this(fontData);
+        supportedCharCodes = new HashSet<>();
+
+        for (Character c : characterSet)
+        {
+            supportedCharCodes.add((int) c);
+        }
+    }
+
+    public boolean supportsCharCode(int c)
+    {
+        if (supportedCharCodes == null) return true;
+        else return supportedCharCodes.contains(c);
+    }
+
+    public Set<Integer> getSupportedCharCodes()
+    {
+        return supportedCharCodes;
     }
 
     @Override
@@ -70,6 +95,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
 
     /**
      * Set the version. Package-private, used by TTFParser only.
+     *
      * @param versionValue The version to set.
      */
     void setVersion(float versionValue)
@@ -82,9 +108,9 @@ public class TrueTypeFont implements FontBoxFont, Closeable
      *
      * @param table The table to add.
      */
-    void addTable( TTFTable table )
+    void addTable(TTFTable table)
     {
-        tables.put( table.getTag(), table );
+        tables.put(table.getTag(), table);
     }
 
     /**
@@ -120,7 +146,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
         data.seek(table.getOffset());
 
         // read all data
-        byte[] bytes = data.read((int)table.getLength());
+        byte[] bytes = data.read((int) table.getLength());
 
         // restore current position
         data.seek(currentPosition);
@@ -135,7 +161,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
      */
     public synchronized NamingTable getNaming() throws IOException
     {
-        NamingTable naming = (NamingTable)tables.get( NamingTable.TAG );
+        NamingTable naming = (NamingTable) tables.get(NamingTable.TAG);
         if (naming != null && !naming.getInitialized())
         {
             readTable(naming);
@@ -151,7 +177,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
      */
     public synchronized PostScriptTable getPostScript() throws IOException
     {
-        PostScriptTable postscript = (PostScriptTable)tables.get( PostScriptTable.TAG );
+        PostScriptTable postscript = (PostScriptTable) tables.get(PostScriptTable.TAG);
         if (postscript != null && !postscript.getInitialized())
         {
             readTable(postscript);
@@ -167,7 +193,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
      */
     public synchronized OS2WindowsMetricsTable getOS2Windows() throws IOException
     {
-        OS2WindowsMetricsTable os2WindowsMetrics = (OS2WindowsMetricsTable)tables.get( OS2WindowsMetricsTable.TAG );
+        OS2WindowsMetricsTable os2WindowsMetrics = (OS2WindowsMetricsTable) tables.get(OS2WindowsMetricsTable.TAG);
         if (os2WindowsMetrics != null && !os2WindowsMetrics.getInitialized())
         {
             readTable(os2WindowsMetrics);
@@ -183,7 +209,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
      */
     public synchronized MaximumProfileTable getMaximumProfile() throws IOException
     {
-        MaximumProfileTable maximumProfile = (MaximumProfileTable)tables.get( MaximumProfileTable.TAG );
+        MaximumProfileTable maximumProfile = (MaximumProfileTable) tables.get(MaximumProfileTable.TAG);
         if (maximumProfile != null && !maximumProfile.getInitialized())
         {
             readTable(maximumProfile);
@@ -199,7 +225,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
      */
     public synchronized HeaderTable getHeader() throws IOException
     {
-        HeaderTable header = (HeaderTable)tables.get( HeaderTable.TAG );
+        HeaderTable header = (HeaderTable) tables.get(HeaderTable.TAG);
         if (header != null && !header.getInitialized())
         {
             readTable(header);
@@ -215,7 +241,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
      */
     public synchronized HorizontalHeaderTable getHorizontalHeader() throws IOException
     {
-        HorizontalHeaderTable horizontalHeader = (HorizontalHeaderTable)tables.get( HorizontalHeaderTable.TAG );
+        HorizontalHeaderTable horizontalHeader = (HorizontalHeaderTable) tables.get(HorizontalHeaderTable.TAG);
         if (horizontalHeader != null && !horizontalHeader.getInitialized())
         {
             readTable(horizontalHeader);
@@ -231,7 +257,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
      */
     public synchronized HorizontalMetricsTable getHorizontalMetrics() throws IOException
     {
-        HorizontalMetricsTable horizontalMetrics = (HorizontalMetricsTable)tables.get( HorizontalMetricsTable.TAG );
+        HorizontalMetricsTable horizontalMetrics = (HorizontalMetricsTable) tables.get(HorizontalMetricsTable.TAG);
         if (horizontalMetrics != null && !horizontalMetrics.getInitialized())
         {
             readTable(horizontalMetrics);
@@ -247,7 +273,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
      */
     public synchronized IndexToLocationTable getIndexToLocation() throws IOException
     {
-        IndexToLocationTable indexToLocation = (IndexToLocationTable)tables.get( IndexToLocationTable.TAG );
+        IndexToLocationTable indexToLocation = (IndexToLocationTable) tables.get(IndexToLocationTable.TAG);
         if (indexToLocation != null && !indexToLocation.getInitialized())
         {
             readTable(indexToLocation);
@@ -263,7 +289,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
      */
     public synchronized GlyphTable getGlyph() throws IOException
     {
-        GlyphTable glyph = (GlyphTable)tables.get( GlyphTable.TAG );
+        GlyphTable glyph = (GlyphTable) tables.get(GlyphTable.TAG);
         if (glyph != null && !glyph.getInitialized())
         {
             readTable(glyph);
@@ -279,7 +305,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
      */
     public synchronized CmapTable getCmap() throws IOException
     {
-        CmapTable cmap = (CmapTable)tables.get( CmapTable.TAG );
+        CmapTable cmap = (CmapTable) tables.get(CmapTable.TAG);
         if (cmap != null && !cmap.getInitialized())
         {
             readTable(cmap);
@@ -357,7 +383,6 @@ public class TrueTypeFont implements FontBoxFont, Closeable
      * object (normally from the TTFParser object).
      *
      * @return COSStream True type font program stream
-     *
      * @throws IOException If there is an error getting the font data.
      */
     public InputStream getOriginalData() throws IOException
@@ -530,23 +555,23 @@ public class TrueTypeFont implements FontBoxFont, Closeable
         }
 
         CmapSubtable cmap = cmapTable.getSubtable(CmapTable.PLATFORM_UNICODE,
-            CmapTable.ENCODING_UNICODE_2_0_FULL);
+                CmapTable.ENCODING_UNICODE_2_0_FULL);
         if (cmap == null)
         {
             cmap = cmapTable.getSubtable(CmapTable.PLATFORM_UNICODE,
-                CmapTable.ENCODING_UNICODE_2_0_BMP);
+                    CmapTable.ENCODING_UNICODE_2_0_BMP);
         }
         if (cmap == null)
         {
             cmap = cmapTable.getSubtable(CmapTable.PLATFORM_WINDOWS,
-                CmapTable.ENCODING_WIN_UNICODE_BMP);
+                    CmapTable.ENCODING_WIN_UNICODE_BMP);
         }
         if (cmap == null)
         {
             // Microsoft's "Recommendations for OpenType Fonts" says that "Symbol" encoding
             // actually means "Unicode, non-standard character set"
             cmap = cmapTable.getSubtable(CmapTable.PLATFORM_WINDOWS,
-                CmapTable.ENCODING_WIN_SYMBOL);
+                    CmapTable.ENCODING_WIN_SYMBOL);
         }
         if (cmap == null)
         {

@@ -19,16 +19,18 @@ package com.tom_roush.fontbox.ttf;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Set;
 
 /**
  * TrueType font file parser.
- * 
+ *
  * @author Ben Litchfield
  */
 public class TTFParser
 {
     private boolean isEmbedded = false;
     private boolean parseOnDemandOnly = false;
+    private Set<Character> characterSet;
 
     /**
      * Constructor.
@@ -40,7 +42,7 @@ public class TTFParser
 
     /**
      * Constructor.
-     *  
+     *
      * @param isEmbedded true if the font is embedded in PDF
      */
     public TTFParser(boolean isEmbedded)
@@ -50,7 +52,7 @@ public class TTFParser
 
     /**
      *  Constructor.
-     *  
+     *
      * @param isEmbedded true if the font is embedded in PDF
      * @param parseOnDemand true if the tables of the font should be parsed on demand
      */
@@ -109,6 +111,12 @@ public class TTFParser
     	return parse(new MemoryTTFDataStream(ttfData));
     }
 
+    public TrueTypeFont parseEmbedded(InputStream ttfData, Set<Character> characterSet) throws IOException {
+        this.isEmbedded = true;
+        this.characterSet = characterSet;
+        return parse(new MemoryTTFDataStream(ttfData));
+    }
+
     /**
      * Parse a file and get a true type font.
      *
@@ -118,7 +126,7 @@ public class TTFParser
      */
     TrueTypeFont parse(TTFDataStream raf) throws IOException
     {
-        TrueTypeFont font = newFont(raf);
+        TrueTypeFont font = newFont(raf, this.characterSet);
         font.setVersion(raf.read32Fixed());
         int numberOfTables = raf.readUnsignedShort();
         int searchRange = raf.readUnsignedShort();
@@ -141,6 +149,10 @@ public class TTFParser
     TrueTypeFont newFont(TTFDataStream raf)
     {
         return new TrueTypeFont(raf);
+    }
+
+    TrueTypeFont newFont(TTFDataStream raf, Set<Character> characterSet) {
+        return new TrueTypeFont(raf, characterSet);
     }
 
     /**

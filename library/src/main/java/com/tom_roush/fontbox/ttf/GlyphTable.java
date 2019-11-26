@@ -117,7 +117,6 @@ public class GlyphTable extends TTFTable
             synchronized (font)
             {
                 readAll();
-                ;
             }
         }
         return glyphs;

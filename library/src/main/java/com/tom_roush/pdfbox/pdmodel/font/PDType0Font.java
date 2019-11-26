@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Set;
 
 import com.tom_roush.fontbox.cmap.CMap;
 import com.tom_roush.fontbox.util.BoundingBox;
@@ -41,453 +42,466 @@ import com.tom_roush.pdfbox.util.Vector;
  */
 public class PDType0Font extends PDFont implements PDVectorFont
 {
-    private final PDCIDFont descendantFont;
-    private CMap cMap, cMapUCS2;
-    private boolean isCMapPredefined;
-    private boolean isDescendantCJK;
-    private PDCIDFontType2Embedder embedder;
+	private final PDCIDFont descendantFont;
+	private CMap cMap, cMapUCS2;
+	private boolean isCMapPredefined;
+	private boolean isDescendantCJK;
+	private PDCIDFontType2Embedder embedder;
 
-    /**
-     * Loads a TTF to be embedded into a document as a Type 0 font.
-     *
-     * @param doc The PDF document that will hold the embedded font.
-     * @param file A TrueType font.
-     * @return A Type0 font with a CIDFontType2 descendant.
-     * @throws IOException If there is an error reading the font file.
-     */
-    public static PDType0Font load(PDDocument doc, File file) throws IOException
-    {
-        return new PDType0Font(doc, new FileInputStream(file), true);
-    }
+	/**
+	 * Loads a TTF to be embedded into a document as a Type 0 font.
+	 *
+	 * @param doc  The PDF document that will hold the embedded font.
+	 * @param file A TrueType font.
+	 * @return A Type0 font with a CIDFontType2 descendant.
+	 * @throws IOException If there is an error reading the font file.
+	 */
+	public static PDType0Font load(PDDocument doc, File file) throws IOException
+	{
+		return new PDType0Font(doc, new FileInputStream(file), true);
+	}
 
-    /**
-     * Loads a TTF to be embedded into a document as a Type 0 font.
-     *
-     * @param doc The PDF document that will hold the embedded font.
-     * @param input A TrueType font.
-     * @return A Type0 font with a CIDFontType2 descendant.
-     * @throws IOException If there is an error reading the font stream.
-     */
-    public static PDType0Font load(PDDocument doc, InputStream input) throws IOException
-    {
-        return new PDType0Font(doc, input, true);
-    }
+	/**
+	 * Loads a TTF to be embedded into a document as a Type 0 font.
+	 *
+	 * @param doc   The PDF document that will hold the embedded font.
+	 * @param input A TrueType font.
+	 * @return A Type0 font with a CIDFontType2 descendant.
+	 * @throws IOException If there is an error reading the font stream.
+	 */
+	public static PDType0Font load(PDDocument doc, InputStream input) throws IOException
+	{
+		return new PDType0Font(doc, input, true);
+	}
 
-    /**
-     * Loads a TTF to be embedded into a document as a Type 0 font.
-     *
-     * @param doc The PDF document that will hold the embedded font.
-     * @param input A TrueType font.
-     * @param embedSubset True if the font will be subset before embedding
-     * @return A Type0 font with a CIDFontType2 descendant.
-     * @throws IOException If there is an error reading the font stream.
-     */
-    public static PDType0Font load(PDDocument doc, InputStream input, boolean embedSubset)
-        throws IOException
-    {
-        return new PDType0Font(doc, input, embedSubset);
-    }
+	/**
+	 * Loads a TTF to be embedded into a document as a Type 0 font.
+	 *
+	 * @param doc         The PDF document that will hold the embedded font.
+	 * @param input       A TrueType font.
+	 * @param embedSubset True if the font will be subset before embedding
+	 * @return A Type0 font with a CIDFontType2 descendant.
+	 * @throws IOException If there is an error reading the font stream.
+	 */
+	public static PDType0Font load(PDDocument doc, InputStream input, boolean embedSubset)
+			throws IOException
+	{
+		return new PDType0Font(doc, input, embedSubset);
+	}
 
-    /**
-     * Constructor for reading a Type0 font from a PDF file.
-     *
-     * @param fontDictionary The font dictionary according to the PDF specification.
-     */
-    public PDType0Font(COSDictionary fontDictionary) throws IOException
-    {
-        super(fontDictionary);
-        COSArray descendantFonts = (COSArray)dict.getDictionaryObject(COSName.DESCENDANT_FONTS);
-        COSDictionary descendantFontDictionary = (COSDictionary) descendantFonts.getObject(0);
+	public static PDType0Font load(PDDocument doc, InputStream input, boolean embedSubset, Set<Character> characterSet) throws IOException
+	{
+		return new PDType0Font(doc, input, embedSubset, characterSet);
+	}
 
-        if (descendantFontDictionary == null)
-        {
-            throw new IOException("Missing descendant font dictionary");
-        }
+	/**
+	 * Constructor for reading a Type0 font from a PDF file.
+	 *
+	 * @param fontDictionary The font dictionary according to the PDF specification.
+	 */
+	public PDType0Font(COSDictionary fontDictionary) throws IOException
+	{
+		super(fontDictionary);
+		COSArray descendantFonts = (COSArray) dict.getDictionaryObject(COSName.DESCENDANT_FONTS);
+		COSDictionary descendantFontDictionary = (COSDictionary) descendantFonts.getObject(0);
 
-        descendantFont = PDFontFactory.createDescendantFont(descendantFontDictionary, this);
-        readEncoding();
-        fetchCMapUCS2();
-    }
+		if (descendantFontDictionary == null)
+		{
+			throw new IOException("Missing descendant font dictionary");
+		}
 
-    /**
-     * Private. Creates a new TrueType font for embedding.
-     */
-    private PDType0Font(PDDocument document, InputStream ttfStream, boolean embedSubset)
-        throws IOException
-    {
-        embedder = new PDCIDFontType2Embedder(document, dict, ttfStream, embedSubset, this);
-        descendantFont = embedder.getCIDFont();
-        readEncoding();
-        fetchCMapUCS2();
-    }
+		descendantFont = PDFontFactory.createDescendantFont(descendantFontDictionary, this);
+		readEncoding();
+		fetchCMapUCS2();
+	}
 
-    @Override
-    public void addToSubset(int codePoint)
-    {
-        if (!willBeSubset())
-        {
-            throw new IllegalStateException("This font was created with subsetting disabled");
-        }
-        embedder.addToSubset(codePoint);
-    }
+	/**
+	 * Private. Creates a new TrueType font for embedding.
+	 */
+	private PDType0Font(PDDocument document, InputStream ttfStream, boolean embedSubset)
+			throws IOException
+	{
+		embedder = new PDCIDFontType2Embedder(document, dict, ttfStream, embedSubset, this);
+		descendantFont = embedder.getCIDFont();
+		readEncoding();
+		fetchCMapUCS2();
+	}
 
-    @Override
-    public void subset() throws IOException
-    {
-        if (!willBeSubset())
-        {
-            throw new IllegalStateException("This font was created with subsetting disabled");
-        }
-        embedder.subset();
-    }
+	private PDType0Font(PDDocument document, InputStream ttfStream, boolean embedSubset, Set<Character> characterSet) throws IOException
+	{
+		embedder = new PDCIDFontType2Embedder(document, dict, ttfStream, embedSubset, characterSet, this);
+		descendantFont = embedder.getCIDFont();
+		readEncoding();
+		fetchCMapUCS2();
+	}
 
-    @Override
-    public boolean willBeSubset()
-    {
-        return embedder != null && embedder.needsSubset();
-    }
+	@Override
+	public void addToSubset(int codePoint)
+	{
+		if (!willBeSubset())
+		{
+			throw new IllegalStateException("This font was created with subsetting disabled");
+		}
+		embedder.addToSubset(codePoint);
+	}
 
-    /**
-     * Reads the font's Encoding entry, which should be a CMap name/stream.
-     */
-    private void readEncoding() throws IOException
-    {
-        COSBase encoding = dict.getDictionaryObject(COSName.ENCODING);
-        if (encoding instanceof COSName)
-        {
-            // predefined CMap
-            COSName encodingName = (COSName) encoding;
-            cMap = CMapManager.getPredefinedCMap(encodingName.getName());
-            if (cMap != null)
-            {
-                isCMapPredefined = true;
-            }
-            else
-            {
-                throw new IOException("Missing required CMap");
-            }
-        }
-        else if (encoding != null)
-        {
-            cMap = readCMap(encoding);
-            if (cMap == null)
-            {
-                throw new IOException("Missing required CMap");
-            }
-            else if (!cMap.hasCIDMappings())
-            {
-                Log.w("PdfBox-Android", "Invalid Encoding CMap in font " + getName());
-            }
-        }
+	@Override
+	public void subset() throws IOException
+	{
+		if (!willBeSubset())
+		{
+			throw new IllegalStateException("This font was created with subsetting disabled");
+		}
+		embedder.subset();
+	}
 
-        // check if the descendant font is CJK
-        PDCIDSystemInfo ros = descendantFont.getCIDSystemInfo();
-        if (ros != null)
-        {
-            isDescendantCJK = ros.getRegistry().equals("Adobe") &&
-                (ros.getOrdering().equals("GB1") ||
-                    ros.getOrdering().equals("CNS1") ||
-                    ros.getOrdering().equals("Japan1") ||
-                    ros.getOrdering().equals("Korea1"));
-        }
-    }
+	@Override
+	public boolean willBeSubset()
+	{
+		return embedder != null && embedder.needsSubset();
+	}
 
-    /**
-     * Fetches the corresponding UCS2 CMap if the font's CMap is predefined.
-     */
-    private void fetchCMapUCS2() throws IOException
-    {
-        // if the font is composite and uses a predefined cmap (excluding Identity-H/V) then
-        // or if its decendant font uses Adobe-GB1/CNS1/Japan1/Korea1
-        if (isCMapPredefined)
-        {
-            // a) Map the character code to a CID using the font's CMap
-            // b) Obtain the ROS from the font's CIDSystemInfo
-            // c) Construct a second CMap name by concatenating the ROS in the format "R-O-UCS2"
-            // d) Obtain the CMap with the constructed name
-            // e) Map the CID according to the CMap from step d), producing a Unicode value
+	/**
+	 * Reads the font's Encoding entry, which should be a CMap name/stream.
+	 */
+	private void readEncoding() throws IOException
+	{
+		COSBase encoding = dict.getDictionaryObject(COSName.ENCODING);
+		if (encoding instanceof COSName)
+		{
+			// predefined CMap
+			COSName encodingName = (COSName) encoding;
+			cMap = CMapManager.getPredefinedCMap(encodingName.getName());
+			if (cMap != null)
+			{
+				isCMapPredefined = true;
+			}
+			else
+			{
+				throw new IOException("Missing required CMap");
+			}
+		}
+		else if (encoding != null)
+		{
+			cMap = readCMap(encoding);
+			if (cMap == null)
+			{
+				throw new IOException("Missing required CMap");
+			}
+			else if (!cMap.hasCIDMappings())
+			{
+				Log.w("PdfBox-Android", "Invalid Encoding CMap in font " + getName());
+			}
+		}
 
-            String cMapName = null;
+		// check if the descendant font is CJK
+		PDCIDSystemInfo ros = descendantFont.getCIDSystemInfo();
+		if (ros != null)
+		{
+			isDescendantCJK = ros.getRegistry().equals("Adobe") &&
+					(ros.getOrdering().equals("GB1") ||
+							ros.getOrdering().equals("CNS1") ||
+							ros.getOrdering().equals("Japan1") ||
+							ros.getOrdering().equals("Korea1"));
+		}
+	}
 
-            // get the encoding CMap
-            COSBase encoding = dict.getDictionaryObject(COSName.ENCODING);
-            if (encoding instanceof COSName)
-            {
-                cMapName = ((COSName)encoding).getName();
-            }
+	/**
+	 * Fetches the corresponding UCS2 CMap if the font's CMap is predefined.
+	 */
+	private void fetchCMapUCS2() throws IOException
+	{
+		// if the font is composite and uses a predefined cmap (excluding Identity-H/V) then
+		// or if its decendant font uses Adobe-GB1/CNS1/Japan1/Korea1
+		if (isCMapPredefined)
+		{
+			// a) Map the character code to a CID using the font's CMap
+			// b) Obtain the ROS from the font's CIDSystemInfo
+			// c) Construct a second CMap name by concatenating the ROS in the format "R-O-UCS2"
+			// d) Obtain the CMap with the constructed name
+			// e) Map the CID according to the CMap from step d), producing a Unicode value
 
-            if ("Identity-H".equals(cMapName) || "Identity-V".equals(cMapName))
-            {
-                if (isDescendantCJK)
-                {
-                    cMapName = getCJKCMap(descendantFont.getCIDSystemInfo());
-                }
-                else
-                {
-                    // we can't map Identity-H or Identity-V to Unicode
-                    return;
-                }
-            }
+			String cMapName = null;
 
-            // try to find the corresponding Unicode (UC2) CMap
-            if (cMapName != null)
-            {
-                CMap cMap = CMapManager.getPredefinedCMap(cMapName);
-                if (cMap != null)
-                {
-                    String ucs2Name = cMap.getRegistry() + "-" + cMap.getOrdering() + "-UCS2";
-                    CMap ucs2CMap = CMapManager.getPredefinedCMap(ucs2Name);
-                    if (ucs2CMap != null)
-                    {
-                        cMapUCS2 = ucs2CMap;
-                    }
-                }
-            }
-        }
-    }
+			// get the encoding CMap
+			COSBase encoding = dict.getDictionaryObject(COSName.ENCODING);
+			if (encoding instanceof COSName)
+			{
+				cMapName = ((COSName) encoding).getName();
+			}
 
-    /**
-     * Returns the name of CJK CMap represented by the given CIDSystemInfo, if any.
-     */
-    private String getCJKCMap(PDCIDSystemInfo ros)
-    {
-        // CJK can fallback to using CIDSystemInfo
-        if (ros.getOrdering().equals("GB1"))
-        {
-            return "Adobe-GB1-0";
-        }
-        else if (ros.getOrdering().equals("CNS1"))
-        {
-            return "Adobe-CNS1-0";
-        }
-        else if (ros.getOrdering().equals("Japan1"))
-        {
-            return "Adobe-Japan1-1";
-        }
-        else if (ros.getOrdering().equals("Korea1"))
-        {
-            return "Adobe-Korea1-0";
-        }
-        else
-        {
-            throw new IllegalStateException();
-        }
-    }
+			if ("Identity-H".equals(cMapName) || "Identity-V".equals(cMapName))
+			{
+				if (isDescendantCJK)
+				{
+					cMapName = getCJKCMap(descendantFont.getCIDSystemInfo());
+				}
+				else
+				{
+					// we can't map Identity-H or Identity-V to Unicode
+					return;
+				}
+			}
 
-    /**
-     * Returns the PostScript name of the font.
-     */
-    public String getBaseFont()
-    {
-        return dict.getNameAsString(COSName.BASE_FONT);
-    }
+			// try to find the corresponding Unicode (UC2) CMap
+			if (cMapName != null)
+			{
+				CMap cMap = CMapManager.getPredefinedCMap(cMapName);
+				if (cMap != null)
+				{
+					String ucs2Name = cMap.getRegistry() + "-" + cMap.getOrdering() + "-UCS2";
+					CMap ucs2CMap = CMapManager.getPredefinedCMap(ucs2Name);
+					if (ucs2CMap != null)
+					{
+						cMapUCS2 = ucs2CMap;
+					}
+				}
+			}
+		}
+	}
 
-    /**
-     * Returns the descendant font.
-     */
-    public PDCIDFont getDescendantFont()
-    {
-        return descendantFont;
-    }
+	/**
+	 * Returns the name of CJK CMap represented by the given CIDSystemInfo, if any.
+	 */
+	private String getCJKCMap(PDCIDSystemInfo ros)
+	{
+		// CJK can fallback to using CIDSystemInfo
+		if (ros.getOrdering().equals("GB1"))
+		{
+			return "Adobe-GB1-0";
+		}
+		else if (ros.getOrdering().equals("CNS1"))
+		{
+			return "Adobe-CNS1-0";
+		}
+		else if (ros.getOrdering().equals("Japan1"))
+		{
+			return "Adobe-Japan1-1";
+		}
+		else if (ros.getOrdering().equals("Korea1"))
+		{
+			return "Adobe-Korea1-0";
+		}
+		else
+		{
+			throw new IllegalStateException();
+		}
+	}
 
-    /**
-     * Returns the font's CMap.
-     */
-    public CMap getCMap()
-    {
-        return cMap;
-    }
+	/**
+	 * Returns the PostScript name of the font.
+	 */
+	public String getBaseFont()
+	{
+		return dict.getNameAsString(COSName.BASE_FONT);
+	}
 
-    /**
-     * Returns the font's UCS2 CMap, only present this font uses a predefined CMap.
-     */
-    public CMap getCMapUCS2()
-    {
-        return cMapUCS2;
-    }
+	/**
+	 * Returns the descendant font.
+	 */
+	public PDCIDFont getDescendantFont()
+	{
+		return descendantFont;
+	}
 
-    @Override
-    public PDFontDescriptor getFontDescriptor()
-    {
-        return descendantFont.getFontDescriptor();
-    }
+	/**
+	 * Returns the font's CMap.
+	 */
+	public CMap getCMap()
+	{
+		return cMap;
+	}
 
-    @Override
-    public Matrix getFontMatrix()
-    {
-        return descendantFont.getFontMatrix();
-    }
+	/**
+	 * Returns the font's UCS2 CMap, only present this font uses a predefined CMap.
+	 */
+	public CMap getCMapUCS2()
+	{
+		return cMapUCS2;
+	}
 
-    @Override
-    public boolean isVertical()
-    {
-        return cMap.getWMode() == 1;
-    }
+	@Override
+	public PDFontDescriptor getFontDescriptor()
+	{
+		return descendantFont.getFontDescriptor();
+	}
 
-    @Override
-    public float getHeight(int code) throws IOException
-    {
-        return descendantFont.getHeight(code);
-    }
+	@Override
+	public Matrix getFontMatrix()
+	{
+		return descendantFont.getFontMatrix();
+	}
 
-    @Override
-    protected byte[] encode(int unicode) throws IOException
-    {
-        return descendantFont.encode(unicode);
-    }
+	@Override
+	public boolean isVertical()
+	{
+		return cMap.getWMode() == 1;
+	}
 
-    @Override
-    public float getAverageFontWidth()
-    {
-        return descendantFont.getAverageFontWidth();
-    }
+	@Override
+	public float getHeight(int code) throws IOException
+	{
+		return descendantFont.getHeight(code);
+	}
 
-    @Override
-    public Vector getPositionVector(int code)
-    {
-        // units are always 1/1000 text space, font matrix is not used, see FOP-2252
-        return descendantFont.getPositionVector(code).scale(-1 / 1000f);
-    }
+	@Override
+	protected byte[] encode(int unicode) throws IOException
+	{
+		return descendantFont.encode(unicode);
+	}
 
-    @Override
-    public Vector getDisplacement(int code) throws IOException
-    {
-        if (isVertical())
-        {
-            return new Vector(0, descendantFont.getVerticalDisplacementVectorY(code) / 1000f);
-        }
-        else
-        {
-            return super.getDisplacement(code);
-        }
-    }
+	@Override
+	public float getAverageFontWidth()
+	{
+		return descendantFont.getAverageFontWidth();
+	}
 
-    @Override
-    public float getWidth(int code) throws IOException
-    {
-        return descendantFont.getWidth(code);
-    }
+	@Override
+	public Vector getPositionVector(int code)
+	{
+		// units are always 1/1000 text space, font matrix is not used, see FOP-2252
+		return descendantFont.getPositionVector(code).scale(-1 / 1000f);
+	}
 
-    @Override
-    protected float getStandard14Width(int code)
-    {
-        throw new UnsupportedOperationException("not suppported");
-    }
+	@Override
+	public Vector getDisplacement(int code) throws IOException
+	{
+		if (isVertical())
+		{
+			return new Vector(0, descendantFont.getVerticalDisplacementVectorY(code) / 1000f);
+		}
+		else
+		{
+			return super.getDisplacement(code);
+		}
+	}
 
-    @Override
-    public float getWidthFromFont(int code) throws IOException
-    {
-        return descendantFont.getWidthFromFont(code);
-    }
+	@Override
+	public float getWidth(int code) throws IOException
+	{
+		return descendantFont.getWidth(code);
+	}
 
-    @Override
-    public boolean isEmbedded()
-    {
-        return descendantFont.isEmbedded();
-    }
+	@Override
+	protected float getStandard14Width(int code)
+	{
+		throw new UnsupportedOperationException("not suppported");
+	}
 
-    @Override
-    public String toUnicode(int code) throws IOException
-    {
-        // try to use a ToUnicode CMap
-        String unicode = super.toUnicode(code);
-        if (unicode != null)
-        {
-            return unicode;
-        }
+	@Override
+	public float getWidthFromFont(int code) throws IOException
+	{
+		return descendantFont.getWidthFromFont(code);
+	}
 
-        if (isCMapPredefined && cMapUCS2 != null)
-        {
-            // if the font is composite and uses a predefined cmap (excluding Identity-H/V) then
-            // or if its decendant font uses Adobe-GB1/CNS1/Japan1/Korea1
+	@Override
+	public boolean isEmbedded()
+	{
+		return descendantFont.isEmbedded();
+	}
 
-            // a) Map the character code to a character identifier (CID) according to the font?s CMap
-            int cid = codeToCID(code);
+	@Override
+	public String toUnicode(int code) throws IOException
+	{
+		// try to use a ToUnicode CMap
+		String unicode = super.toUnicode(code);
+		if (unicode != null)
+		{
+			return unicode;
+		}
 
-            // e) Map the CID according to the CMap from step d), producing a Unicode value
-            return cMapUCS2.toUnicode(cid);
-        }
-        else
-        {
-            // if no value has been produced, there is no way to obtain Unicode for the character.
-            String cid = "CID+" + codeToCID(code);
-            Log.w("PdfBox-Android", "No Unicode mapping for " + cid + " (" + code + ") in font " + getName());
-            return null;
-        }
-    }
+		if (isCMapPredefined && cMapUCS2 != null)
+		{
+			// if the font is composite and uses a predefined cmap (excluding Identity-H/V) then
+			// or if its decendant font uses Adobe-GB1/CNS1/Japan1/Korea1
 
-    @Override
-    public String getName()
-    {
-        return getBaseFont();
-    }
+			// a) Map the character code to a character identifier (CID) according to the font?s CMap
+			int cid = codeToCID(code);
 
-    @Override
-    public BoundingBox getBoundingBox() throws IOException
-    {
-        return descendantFont.getBoundingBox();
-    }
+			// e) Map the CID according to the CMap from step d), producing a Unicode value
+			return cMapUCS2.toUnicode(cid);
+		}
+		else
+		{
+			// if no value has been produced, there is no way to obtain Unicode for the character.
+			String cid = "CID+" + codeToCID(code);
+			Log.w("PdfBox-Android", "No Unicode mapping for " + cid + " (" + code + ") in font " + getName());
+			return null;
+		}
+	}
 
-    @Override
-    public int readCode(InputStream in) throws IOException
-    {
-        return cMap.readCode(in);
-    }
+	@Override
+	public String getName()
+	{
+		return getBaseFont();
+	}
 
-    /**
-     * Returns the CID for the given character code. If not found then CID 0 is returned.
-     *
-     * @param code character code
-     * @return CID
-     */
-    public int codeToCID(int code)
-    {
-        return descendantFont.codeToCID(code);
-    }
+	@Override
+	public BoundingBox getBoundingBox() throws IOException
+	{
+		return descendantFont.getBoundingBox();
+	}
 
-    /**
-     * Returns the GID for the given character code.
-     *
-     * @param code character code
-     * @return GID
-     */
-    public int codeToGID(int code) throws IOException
-    {
-        return descendantFont.codeToGID(code);
-    }
+	@Override
+	public int readCode(InputStream in) throws IOException
+	{
+		return cMap.readCode(in);
+	}
 
-    @Override
-    public boolean isStandard14()
-    {
-        return false;
-    }
+	/**
+	 * Returns the CID for the given character code. If not found then CID 0 is returned.
+	 *
+	 * @param code character code
+	 * @return CID
+	 */
+	public int codeToCID(int code)
+	{
+		return descendantFont.codeToCID(code);
+	}
 
-    @Override
-    public boolean isDamaged()
-    {
-        return descendantFont.isDamaged();
-    }
+	/**
+	 * Returns the GID for the given character code.
+	 *
+	 * @param code character code
+	 * @return GID
+	 */
+	public int codeToGID(int code) throws IOException
+	{
+		return descendantFont.codeToGID(code);
+	}
 
-    @Override
-    public String toString()
-    {
-        String descendant = null;
-        if (getDescendantFont() != null)
-        {
-            descendant = getDescendantFont().getClass().getSimpleName();
-        }
-        return getClass().getSimpleName() + "/" + descendant + " " + getBaseFont();
-    }
+	@Override
+	public boolean isStandard14()
+	{
+		return false;
+	}
 
-    @Override
-    public Path getPath(int code) throws IOException
-    {
-        return descendantFont.getPath(code);
-    }
+	@Override
+	public boolean isDamaged()
+	{
+		return descendantFont.isDamaged();
+	}
 
-    @Override
-    public boolean hasGlyph(int code) throws IOException
-    {
-        return descendantFont.hasGlyph(code);
-    }
+	@Override
+	public String toString()
+	{
+		String descendant = null;
+		if (getDescendantFont() != null)
+		{
+			descendant = getDescendantFont().getClass().getSimpleName();
+		}
+		return getClass().getSimpleName() + "/" + descendant + " " + getBaseFont();
+	}
+
+	@Override
+	public Path getPath(int code) throws IOException
+	{
+		return descendantFont.getPath(code);
+	}
+
+	@Override
+	public boolean hasGlyph(int code) throws IOException
+	{
+		return descendantFont.hasGlyph(code);
+	}
 }

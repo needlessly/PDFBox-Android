@@ -16,14 +16,14 @@
  */
 package com.tom_roush.fontbox.ttf;
 
-import android.util.Log;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import android.util.Log;
 
 /**
  * A "cmap" subtable.
@@ -57,9 +57,9 @@ public class CmapSubtable
     /**
      * This will read the required data from the stream.
      *
-     * @param cmap the CMAP this encoding belongs to.
+     * @param cmap      the CMAP this encoding belongs to.
      * @param numGlyphs number of glyphs.
-     * @param data The stream to read the data from.
+     * @param data      The stream to read the data from.
      * @throws IOException If there is an error reading the data.
      */
     public void initSubtable(CmapTable cmap, int numGlyphs, TTFDataStream data) throws IOException
@@ -90,10 +90,10 @@ public class CmapSubtable
                 processSubtype2(data, numGlyphs);
                 break;
             case 4:
-                processSubtype4(data, numGlyphs);
+                processSubtype4(data, numGlyphs, cmap);
                 break;
             case 6:
-                processSubtype6(data, numGlyphs);
+                processSubtype6(data, numGlyphs, cmap);
                 break;
             case 8:
                 processSubtype8(data, numGlyphs);
@@ -118,7 +118,7 @@ public class CmapSubtable
     /**
      * Reads a format 8 subtable.
      *
-     * @param data the data stream of the to be parsed ttf font
+     * @param data      the data stream of the to be parsed ttf font
      * @param numGlyphs number of glyphs to be read
      * @throws IOException If there is an error parsing the true type font.
      */
@@ -191,7 +191,7 @@ public class CmapSubtable
     /**
      * Reads a format 10 subtable.
      *
-     * @param data the data stream of the to be parsed ttf font
+     * @param data      the data stream of the to be parsed ttf font
      * @param numGlyphs number of glyphs to be read
      * @throws IOException If there is an error parsing the true type font.
      */
@@ -205,7 +205,7 @@ public class CmapSubtable
         }
 
         if (startCode < 0 || startCode > 0x0010FFFF || (startCode + numChars) > 0x0010FFFF
-            || ((startCode + numChars) >= 0x0000D800 && (startCode + numChars) <= 0x0000DFFF))
+                || ((startCode + numChars) >= 0x0000D800 && (startCode + numChars) <= 0x0000DFFF))
         {
             throw new IOException("Invalid Characters codes");
 
@@ -215,7 +215,7 @@ public class CmapSubtable
     /**
      * Reads a format 12 subtable.
      *
-     * @param data the data stream of the to be parsed ttf font
+     * @param data      the data stream of the to be parsed ttf font
      * @param numGlyphs number of glyphs to be read
      * @throws IOException If there is an error parsing the true type font.
      */
@@ -230,14 +230,14 @@ public class CmapSubtable
             long startGlyph = data.readUnsignedInt();
 
             if (firstCode < 0 || firstCode > 0x0010FFFF ||
-                (firstCode >= 0x0000D800 && firstCode <= 0x0000DFFF))
+                    (firstCode >= 0x0000D800 && firstCode <= 0x0000DFFF))
             {
                 throw new IOException("Invalid characters codes");
             }
 
             if ((endCode > 0 && endCode < firstCode) ||
-                endCode > 0x0010FFFF ||
-                (endCode >= 0x0000D800 && endCode <= 0x0000DFFF))
+                    endCode > 0x0010FFFF ||
+                    (endCode >= 0x0000D800 && endCode <= 0x0000DFFF))
             {
                 throw new IOException("Invalid characters codes");
             }
@@ -263,7 +263,7 @@ public class CmapSubtable
     /**
      * Reads a format 13 subtable.
      *
-     * @param data the data stream of the to be parsed ttf font
+     * @param data      the data stream of the to be parsed ttf font
      * @param numGlyphs number of glyphs to be read
      * @throws IOException If there is an error parsing the true type font.
      */
@@ -288,7 +288,7 @@ public class CmapSubtable
             }
 
             if ((endCode > 0 && endCode < firstCode) || endCode > 0x0010FFFF
-                || (endCode >= 0x0000D800 && endCode <= 0x0000DFFF))
+                    || (endCode >= 0x0000D800 && endCode <= 0x0000DFFF))
             {
                 throw new IOException("Invalid Characters codes");
             }
@@ -315,7 +315,7 @@ public class CmapSubtable
     /**
      * Reads a format 14 subtable.
      *
-     * @param data the data stream of the to be parsed ttf font
+     * @param data      the data stream of the to be parsed ttf font
      * @param numGlyphs number of glyphs to be read
      * @throws IOException If there is an error parsing the true type font.
      */
@@ -329,11 +329,11 @@ public class CmapSubtable
     /**
      * Reads a format 6 subtable.
      *
-     * @param data the data stream of the to be parsed ttf font
+     * @param data      the data stream of the to be parsed ttf font
      * @param numGlyphs number of glyphs to be read
      * @throws IOException If there is an error parsing the true type font.
      */
-    protected void processSubtype6(TTFDataStream data, int numGlyphs) throws IOException
+    protected void processSubtype6(TTFDataStream data, int numGlyphs, CmapTable cmap) throws IOException
     {
         int firstCode = data.readUnsignedShort();
         int entryCount = data.readUnsignedShort();
@@ -341,11 +341,18 @@ public class CmapSubtable
         int[] glyphIdArray = data.readUnsignedShortArray(entryCount);
         for (int i = 0; i < entryCount; i++)
         {
-            tmpGlyphToChar.put(glyphIdArray[i], firstCode + i);
-            characterCodeToGlyphId.put((firstCode + i), glyphIdArray[i]);
+            int charCode = firstCode + i;
+
+            if (cmap.font.supportsCharCode(charCode))
+            {
+                tmpGlyphToChar.put(glyphIdArray[i], firstCode + i);
+                characterCodeToGlyphId.put((firstCode + i), glyphIdArray[i]);
+            }
         }
+
         glyphIdToCharacterCode = newGlyphIdToCharacterCode(
-            Collections.max(tmpGlyphToChar.keySet()) + 1);
+                Collections.max(tmpGlyphToChar.keySet()) + 1);
+
         for (Entry<Integer, Integer> entry : tmpGlyphToChar.entrySet())
         {
             // link the glyphId with the right character code
@@ -356,11 +363,11 @@ public class CmapSubtable
     /**
      * Reads a format 4 subtable.
      *
-     * @param data the data stream of the to be parsed ttf font
+     * @param data      the data stream of the to be parsed ttf font
      * @param numGlyphs number of glyphs to be read
      * @throws IOException If there is an error parsing the true type font.
      */
-    protected void processSubtype4(TTFDataStream data, int numGlyphs) throws IOException
+    protected void processSubtype4(TTFDataStream data, int numGlyphs, CmapTable cmap) throws IOException
     {
         int segCountX2 = data.readUnsignedShort();
         int segCount = segCountX2 / 2;
@@ -387,27 +394,30 @@ public class CmapSubtable
             {
                 for (int j = start; j <= end; j++)
                 {
-                    if (rangeOffset == 0)
+                    if (cmap.font.supportsCharCode(j))
                     {
-                        int glyphid = (j + delta) % 65536;
-                        tmpGlyphToChar.put(glyphid, j);
-                        characterCodeToGlyphId.put(j, glyphid);
-                    }
-                    else
-                    {
-                        long glyphOffset = currentPosition + ((rangeOffset / 2) +
-                            (j - start) +
-                            (i - segCount)) * 2;
-                        data.seek(glyphOffset);
-                        int glyphIndex = data.readUnsignedShort();
-                        if (glyphIndex != 0)
+                        if (rangeOffset == 0)
                         {
-                            glyphIndex += delta;
-                            glyphIndex %= 65536;
-                            if (!tmpGlyphToChar.containsKey(glyphIndex))
+                            int glyphid = (j + delta) % 65536;
+                            tmpGlyphToChar.put(glyphid, j);
+                            characterCodeToGlyphId.put(j, glyphid);
+                        }
+                        else
+                        {
+                            long glyphOffset = currentPosition + ((rangeOffset / 2) +
+                                    (j - start) +
+                                    (i - segCount)) * 2;
+                            data.seek(glyphOffset);
+                            int glyphIndex = data.readUnsignedShort();
+                            if (glyphIndex != 0)
                             {
-                                tmpGlyphToChar.put(glyphIndex, j);
-                                characterCodeToGlyphId.put(j, glyphIndex);
+                                glyphIndex += delta;
+                                glyphIndex %= 65536;
+                                if (!tmpGlyphToChar.containsKey(glyphIndex))
+                                {
+                                    tmpGlyphToChar.put(glyphIndex, j);
+                                    characterCodeToGlyphId.put(j, glyphIndex);
+                                }
                             }
                         }
                     }
@@ -435,7 +445,7 @@ public class CmapSubtable
     /**
      * Read a format 2 subtable.
      *
-     * @param data the data stream of the to be parsed ttf font
+     * @param data      the data stream of the to be parsed ttf font
      * @param numGlyphs number of glyphs to be read
      * @throws IOException If there is an error parsing the true type font.
      */
@@ -594,9 +604,7 @@ public class CmapSubtable
     }
 
     /**
-     *
      * Class used to manage CMap - Format 2.
-     *
      */
     private class SubHeader
     {
