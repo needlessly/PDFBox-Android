@@ -62,9 +62,12 @@ public class TrueTypeFont implements FontBoxFont, Closeable
         this(fontData);
         supportedCharCodes = new HashSet<>();
 
-        for (Character c : characterSet)
+        if (characterSet != null)
         {
-            supportedCharCodes.add((int) c);
+            for (Character c : characterSet)
+            {
+                supportedCharCodes.add((int) c);
+            }
         }
     }
 
