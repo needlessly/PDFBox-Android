@@ -350,13 +350,16 @@ public class CmapSubtable
             }
         }
 
-        glyphIdToCharacterCode = newGlyphIdToCharacterCode(
-                Collections.max(tmpGlyphToChar.keySet()) + 1);
-
-        for (Entry<Integer, Integer> entry : tmpGlyphToChar.entrySet())
+        if (tmpGlyphToChar.size() > 0)
         {
-            // link the glyphId with the right character code
-            glyphIdToCharacterCode[entry.getKey()] = entry.getValue();
+            glyphIdToCharacterCode = newGlyphIdToCharacterCode(
+                    Collections.max(tmpGlyphToChar.keySet()) + 1);
+
+            for (Entry<Integer, Integer> entry : tmpGlyphToChar.entrySet())
+            {
+                // link the glyphId with the right character code
+                glyphIdToCharacterCode[entry.getKey()] = entry.getValue();
+            }
         }
     }
 
