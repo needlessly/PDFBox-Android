@@ -130,12 +130,26 @@ public class CmapSubtable
 
     protected void processOcrType(CmapTable cmap)
     {
+
+        Map<Integer, Integer> tmpGlyphToChar = new HashMap<>();
         for (int j : cmap.font.getSupportedCharCodes())
         {
-            characterCodeToGlyphId.put(j, 1);
+            int glyphId = (j + 1) % 65536;
+            characterCodeToGlyphId.put(j, glyphId);
+            tmpGlyphToChar.put(glyphId, j);
         }
 
-        // glyph to charCode not needed here.
+        if (tmpGlyphToChar.isEmpty())
+        {
+            Log.w("PdfBox-Android", "cmap format 4 subtable is empty");
+            return;
+        }
+        glyphIdToCharacterCode = newGlyphIdToCharacterCode(Collections.max(tmpGlyphToChar.keySet()) + 1);
+        for (Entry<Integer, Integer> entry : tmpGlyphToChar.entrySet())
+        {
+            // link the glyphId with the right character code
+            glyphIdToCharacterCode[entry.getKey()] = entry.getValue();
+        }
     }
 
     /**
@@ -584,8 +598,6 @@ public class CmapSubtable
      */
     public int getGlyphId(int characterCode)
     {
-        if (isOcr) return 1;
-
         Integer glyphId = characterCodeToGlyphId.get(characterCode);
         return glyphId == null ? 0 : glyphId;
     }
