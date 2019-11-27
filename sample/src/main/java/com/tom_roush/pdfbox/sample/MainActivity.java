@@ -115,7 +115,7 @@ public class MainActivity extends Activity
         //PDFont font = PDType1Font.HELVETICA;
 
         Set<Character> characterSet = new HashSet<>();
-        String s = "Hello World";
+        String s = "Hello World, 안녕하세요~, नमस्ते";
         for (int i = 0; i < s.length(); i++)
         {
             characterSet.add(s.charAt(i));
@@ -141,7 +141,7 @@ public class MainActivity extends Activity
             contentStream.setNonStrokingColor(15, 38, 192);
             contentStream.setFont(font, 12);
             contentStream.newLineAtOffset(100, 700);
-            contentStream.showText("Hello World");
+            contentStream.showText(s);
             contentStream.endText();
 
             // Load in the images
