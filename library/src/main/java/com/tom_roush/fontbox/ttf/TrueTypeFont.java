@@ -45,7 +45,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
     protected Map<String, TTFTable> tables = new HashMap<>();
     private final TTFDataStream data;
     private Map<String, Integer> postScriptNames;
-    private Set<Integer> supportedCharCodes;
+    private Set<Integer> supportedCharCodes = new HashSet<>();
 
     /**
      * Constructor.  Clients should use the TTFParser to create a new TrueTypeFont object.
@@ -60,7 +60,6 @@ public class TrueTypeFont implements FontBoxFont, Closeable
     TrueTypeFont(TTFDataStream fontData, Set<Character> characterSet)
     {
         this(fontData);
-        supportedCharCodes = new HashSet<>();
 
         if (characterSet != null)
         {
@@ -73,7 +72,7 @@ public class TrueTypeFont implements FontBoxFont, Closeable
 
     public boolean supportsCharCode(int c)
     {
-        if (supportedCharCodes == null) return true;
+        if (supportedCharCodes.size() == 0) return true;
         else return supportedCharCodes.contains(c);
     }
 

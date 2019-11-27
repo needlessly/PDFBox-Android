@@ -22,7 +22,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.Security;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDDocumentCatalog;
@@ -31,6 +33,7 @@ import com.tom_roush.pdfbox.pdmodel.PDPageContentStream;
 import com.tom_roush.pdfbox.pdmodel.encryption.AccessPermission;
 import com.tom_roush.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
 import com.tom_roush.pdfbox.pdmodel.font.PDFont;
+import com.tom_roush.pdfbox.pdmodel.font.PDType0Font;
 import com.tom_roush.pdfbox.pdmodel.font.PDType1Font;
 import com.tom_roush.pdfbox.pdmodel.graphics.image.JPEGFactory;
 import com.tom_roush.pdfbox.pdmodel.graphics.image.LosslessFactory;
@@ -48,26 +51,30 @@ import com.tom_roush.pdfbox.util.PDFBoxResourceLoader;
 
 import org.spongycastle.jce.provider.BouncyCastleProvider;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity
+{
     File root;
     AssetManager assetManager;
     Bitmap pageImage;
     TextView tv;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState)
+    {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
     }
-    
+
     @Override
-    protected void onStart() {
+    protected void onStart()
+    {
         super.onStart();
         setup();
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
@@ -76,7 +83,8 @@ public class MainActivity extends Activity {
     /**
      * Initializes variables used for convenience
      */
-    private void setup() {
+    private void setup()
+    {
         // Enable Android-style asset loading (highly recommended)
         PDFBoxResourceLoader.init(getApplicationContext());
         // Find the root of the external storage.
@@ -86,39 +94,42 @@ public class MainActivity extends Activity {
 
         // Need to ask for write permissions on SDK 23 and up, this is ignored on older versions
         if (ContextCompat.checkSelfPermission(MainActivity.this,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+                Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
         {
 
             ActivityCompat.requestPermissions(MainActivity.this,
-                new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+                    new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE }, 1);
         }
     }
 
     /**
      * Creates a new PDF from scratch and saves it to a file
      */
-    public void createPdf(View v) {
+    public void createPdf(View v) throws IOException
+    {
         PDDocument document = new PDDocument();
         PDPage page = new PDPage();
         document.addPage(page);
 
         // Create a new font object selecting one of the PDF base fonts
-        PDFont font = PDType1Font.HELVETICA;
+        //PDFont font = PDType1Font.HELVETICA;
+
+        Set<Character> characterSet = new HashSet<>();
+        String s = "Hello World";
+        for (int i = 0; i < s.length(); i++)
+        {
+            characterSet.add(s.charAt(i));
+        }
+
         // Or a custom font
-//        try
-//        {
-//            // Replace MyFontFile with the path to the asset font you'd like to use.
-//            // Or use LiberationSans "com/tom_roush/pdfbox/resources/ttf/LiberationSans-Regular.ttf"
-//            font = PDType0Font.load(document, assetManager.open("MyFontFile.TTF"));
-//        }
-//        catch (IOException e)
-//        {
-//            Log.e("PdfBox-Android-Sample", "Could not load font", e);
-//        }
+            // Replace MyFontFile with the path to the asset font you'd like to use.
+            // Or use LiberationSans "com/tom_roush/pdfbox/resources/ttf/LiberationSans-Regular.ttf"
+        PDFont font = PDType0Font.load(document, assetManager.open("horizontal.ttf"), true, characterSet);
 
         PDPageContentStream contentStream;
 
-        try {
+        try
+        {
             // Define a content stream for adding to the PDF
             contentStream = new PDPageContentStream(document, page);
 
@@ -146,7 +157,7 @@ public class MainActivity extends Activity {
             // Draw the red overlay image
             Bitmap alphaImage = BitmapFactory.decodeStream(alpha);
             PDImageXObject alphaXimage = LosslessFactory.createFromImage(document, alphaImage);
-            contentStream.drawImage(alphaXimage, 20, 20 );
+            contentStream.drawImage(alphaXimage, 20, 20);
 
             // Make sure that the content stream is closed:
             contentStream.close();
@@ -157,7 +168,9 @@ public class MainActivity extends Activity {
             document.close();
             tv.setText("Successfully wrote PDF to " + path);
 
-        } catch (IOException e) {
+        }
+        catch (IOException e)
+        {
             Log.e("PdfBox-Android-Sample", "Exception thrown while creating PDF", e);
         }
     }
@@ -165,9 +178,11 @@ public class MainActivity extends Activity {
     /**
      * Loads an existing PDF and renders it to a Bitmap
      */
-    public void renderFile(View v) {
+    public void renderFile(View v)
+    {
         // Render the page and save it to an image file
-        try {
+        try
+        {
             // Load in an already created PDF
             PDDocument document = PDDocument.load(assetManager.open("Created.pdf"));
             // Create a renderer for the document
@@ -194,8 +209,10 @@ public class MainActivity extends Activity {
     /**
      * Fills in a PDF form and saves the result
      */
-    public void fillForm(View v) {
-        try {
+    public void fillForm(View v)
+    {
+        try
+        {
             // Load the document and get the AcroForm
             PDDocument document = PDDocument.load(assetManager.open("FormTest.pdf"));
             PDDocumentCatalog docCatalog = document.getDocumentCatalog();
@@ -211,7 +228,7 @@ public class MainActivity extends Activity {
             ((PDCheckbox) checkbox).check();
 
             PDField radio = acroForm.getField("Radio");
-            ((PDRadioButton)radio).setValue("Second");
+            ((PDRadioButton) radio).setValue("Second");
 
             PDField listbox = acroForm.getField("ListBox");
             List<Integer> listValues = new ArrayList<>();
@@ -226,7 +243,9 @@ public class MainActivity extends Activity {
             tv.setText("Saved filled form to " + path);
             document.save(path);
             document.close();
-        } catch (IOException e) {
+        }
+        catch (IOException e)
+        {
             Log.e("PdfBox-Android-Sample", "Exception thrown while filling form fields", e);
         }
     }
@@ -234,16 +253,21 @@ public class MainActivity extends Activity {
     /**
      * Strips the text from a PDF and displays the text on screen
      */
-    public void stripText(View v) {
+    public void stripText(View v)
+    {
         String parsedText = null;
         PDDocument document = null;
-        try {
+        try
+        {
             document = PDDocument.load(assetManager.open("Hello.pdf"));
-        } catch(IOException e) {
+        }
+        catch (IOException e)
+        {
             Log.e("PdfBox-Android-Sample", "Exception thrown while loading document to strip", e);
         }
 
-        try {
+        try
+        {
             PDFTextStripper pdfStripper = new PDFTextStripper();
             pdfStripper.setStartPage(0);
             pdfStripper.setEndPage(1);
@@ -252,8 +276,11 @@ public class MainActivity extends Activity {
         catch (IOException e)
         {
             Log.e("PdfBox-Android-Sample", "Exception thrown while stripping text", e);
-        } finally {
-            try {
+        }
+        finally
+        {
+            try
+            {
                 if (document != null) document.close();
             }
             catch (IOException e)
@@ -321,12 +348,17 @@ public class MainActivity extends Activity {
     /**
      * Helper method for drawing the result of renderFile() on screen
      */
-    private void displayRenderedImage() {
-        new Thread() {
-            public void run() {
-                runOnUiThread(new Runnable() {
+    private void displayRenderedImage()
+    {
+        new Thread()
+        {
+            public void run()
+            {
+                runOnUiThread(new Runnable()
+                {
                     @Override
-                    public void run() {
+                    public void run()
+                    {
                         ImageView imageView = (ImageView) findViewById(R.id.renderedImageView);
                         imageView.setImageBitmap(pageImage);
                     }

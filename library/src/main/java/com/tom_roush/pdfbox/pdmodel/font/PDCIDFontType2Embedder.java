@@ -78,19 +78,16 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
         // build GID -> Unicode map
         gidToUni = new HashMap<>();
 
-        for (int charCode: ttf.getSupportedCharCodes()) {
-            gidToUni.put(cmap.getGlyphId(charCode), charCode);
-        }
 
-        //for (int gid = 1, max = ttf.getMaximumProfile().getNumGlyphs(); gid <= max; gid++)
-        //{
-        //    // skip composite glyph components that have no code point
-        //    Integer codePoint = cmap.getCharacterCode(gid);
-        //    if (codePoint != null)
-        //    {
-        //        gidToUni.put(gid, codePoint); // CID = GID
-        //    }
-        //}
+        for (int gid = 1, max = ttf.getMaximumProfile().getNumGlyphs(); gid <= max; gid++)
+        {
+            // skip composite glyph components that have no code point
+            Integer codePoint = cmap.getCharacterCode(gid);
+            if (codePoint != null)
+            {
+                gidToUni.put(gid, codePoint); // CID = GID
+            }
+        }
 
         // ToUnicode CMap
         buildToUnicodeCMap(null);
@@ -118,6 +115,11 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
         // build GID -> Unicode map
         gidToUni = new HashMap<>();
 
+        for (int charCode: ttf.getSupportedCharCodes()) {
+            gidToUni.put(cmap.getGlyphId(charCode), charCode);
+        }
+
+        /*
         for (int gid = 1, max = ttf.getMaximumProfile().getNumGlyphs(); gid <= max; gid++)
         {
             // skip composite glyph components that have no code point
@@ -127,9 +129,10 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
                 gidToUni.put(gid, codePoint); // CID = GID
             }
         }
+         */
 
         // ToUnicode CMap
-        buildToUnicodeCMap(null);
+        buildToUnicodeCMap(null); // Charcode 돌면서 구성해주면 끝
     }
 
     /**

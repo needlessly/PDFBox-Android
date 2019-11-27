@@ -118,7 +118,7 @@ abstract class TrueTypeEmbedder implements Subsetter
 
 	public void buildFontFile2(InputStream ttfStream, Set<Character> characterSet) throws IOException
 	{
-		PDStream stream = new PDStream(document, ttfStream, COSName.FLATE_DECODE);
+		PDStream stream = new PDStream(document, ttfStream, COSName.FLATE_DECODE); // long if ttf big
 		stream.getStream().setInt(COSName.LENGTH1, stream.toByteArray().length);
 
 		// as the stream was closed within the PDStream constructor, we have to recreate it

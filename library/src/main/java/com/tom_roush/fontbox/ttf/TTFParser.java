@@ -114,7 +114,7 @@ public class TTFParser
     public TrueTypeFont parseEmbedded(InputStream ttfData, Set<Character> characterSet) throws IOException {
         this.isEmbedded = true;
         this.characterSet = characterSet;
-        return parse(new MemoryTTFDataStream(ttfData));
+        return parse(new MemoryTTFDataStream(ttfData)); // long if ttf big
     }
 
     /**
