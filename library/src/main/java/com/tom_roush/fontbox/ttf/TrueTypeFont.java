@@ -57,16 +57,13 @@ public class TrueTypeFont implements FontBoxFont, Closeable
         this.data = fontData;
     }
 
-    TrueTypeFont(TTFDataStream fontData, Set<Character> characterSet)
+    TrueTypeFont(TTFDataStream fontData, Set<Integer> supportedCharCodes)
     {
         this(fontData);
 
-        if (characterSet != null)
+        if (supportedCharCodes != null)
         {
-            for (Character c : characterSet)
-            {
-                supportedCharCodes.add((int) c);
-            }
+            this.supportedCharCodes.addAll(supportedCharCodes);
         }
     }
 

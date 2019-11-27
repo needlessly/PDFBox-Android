@@ -82,8 +82,7 @@ public class PDCIDFontType2 extends PDCIDFont
             try
             {
                 // embedded
-                TTFParser ttfParser = new TTFParser(true);
-                ttfFont = ttfParser.parse(ff2Stream.createInputStream());
+                ttfFont = new TTFParser().parseEmbedded(ff2Stream.createInputStream(), parent.getSupportedCharCodes());
             }
             catch (NullPointerException e) // TTF parser is buggy
             {

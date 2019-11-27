@@ -77,12 +77,12 @@ abstract class TrueTypeEmbedder implements Subsetter
 	}
 
 	TrueTypeEmbedder(PDDocument document, COSDictionary dict, InputStream ttfStream,
-			boolean embedSubset, Set<Character> characterSet) throws IOException
+			boolean embedSubset, Set<Integer> supportedCharCodes) throws IOException
 	{
 		this.document = document;
 		this.embedSubset = embedSubset;
 
-		buildFontFile2(ttfStream, characterSet);
+		buildFontFile2(ttfStream, supportedCharCodes);
 
 		dict.setName(COSName.BASE_FONT, ttf.getName());
 		cmap = ttf.getUnicodeCmap();
@@ -116,7 +116,7 @@ abstract class TrueTypeEmbedder implements Subsetter
 		fontDescriptor.setFontFile2(stream);
 	}
 
-	public void buildFontFile2(InputStream ttfStream, Set<Character> characterSet) throws IOException
+	public void buildFontFile2(InputStream ttfStream, Set<Integer> supportedCharCodes) throws IOException
 	{
 		PDStream stream = new PDStream(document, ttfStream, COSName.FLATE_DECODE); // long if ttf big
 		stream.getStream().setInt(COSName.LENGTH1, stream.toByteArray().length);
@@ -126,7 +126,7 @@ abstract class TrueTypeEmbedder implements Subsetter
 		try
 		{
 			input = stream.createInputStream();
-			ttf = new TTFParser().parseEmbedded(input, characterSet);
+			ttf = new TTFParser().parseEmbedded(input, supportedCharCodes);
 
 			if (!isEmbeddingPermitted(ttf))
 			{

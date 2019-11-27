@@ -30,7 +30,7 @@ public class TTFParser
 {
     private boolean isEmbedded = false;
     private boolean parseOnDemandOnly = false;
-    private Set<Character> characterSet;
+    private Set<Integer> supportedCharCodes;
 
     /**
      * Constructor.
@@ -111,9 +111,9 @@ public class TTFParser
     	return parse(new MemoryTTFDataStream(ttfData));
     }
 
-    public TrueTypeFont parseEmbedded(InputStream ttfData, Set<Character> characterSet) throws IOException {
+    public TrueTypeFont parseEmbedded(InputStream ttfData, Set<Integer> supportedCharCodes) throws IOException {
         this.isEmbedded = true;
-        this.characterSet = characterSet;
+        this.supportedCharCodes = supportedCharCodes;
         return parse(new MemoryTTFDataStream(ttfData)); // long if ttf big
     }
 
@@ -126,7 +126,7 @@ public class TTFParser
      */
     TrueTypeFont parse(TTFDataStream raf) throws IOException
     {
-        TrueTypeFont font = newFont(raf, this.characterSet);
+        TrueTypeFont font = newFont(raf, this.supportedCharCodes);
         font.setVersion(raf.read32Fixed());
         int numberOfTables = raf.readUnsignedShort();
         int searchRange = raf.readUnsignedShort();
@@ -151,8 +151,8 @@ public class TTFParser
         return new TrueTypeFont(raf);
     }
 
-    TrueTypeFont newFont(TTFDataStream raf, Set<Character> characterSet) {
-        return new TrueTypeFont(raf, characterSet);
+    TrueTypeFont newFont(TTFDataStream raf, Set<Integer> supportedCharCodes) {
+        return new TrueTypeFont(raf, supportedCharCodes);
     }
 
     /**

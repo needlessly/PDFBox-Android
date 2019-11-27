@@ -125,7 +125,7 @@ public class MainActivity extends Activity
             // Replace MyFontFile with the path to the asset font you'd like to use.
             // Or use LiberationSans "com/tom_roush/pdfbox/resources/ttf/LiberationSans-Regular.ttf"
         Long st = System.currentTimeMillis();
-        PDFont font = PDType0Font.load(document, assetManager.open("horizontal.ttf"), true, characterSet);
+        PDFont font = PDType0Font.loadVertical(document, assetManager.open("horizontal.ttf"), true, characterSet);
         Long et = System.currentTimeMillis();
         System.out.println(String.format("FONT LOADING: %d", et - st));
 

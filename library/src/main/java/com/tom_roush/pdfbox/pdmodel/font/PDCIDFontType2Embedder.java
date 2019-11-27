@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import com.tom_roush.fontbox.ttf.VerticalHeaderTable;
 import com.tom_roush.pdfbox.cos.COSArray;
 import com.tom_roush.pdfbox.cos.COSDictionary;
 import com.tom_roush.pdfbox.cos.COSInteger;
@@ -46,6 +47,7 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
     private final COSDictionary dict;
     private final COSDictionary cidFont;
     private final Map<Integer, Integer> gidToUni;
+    private boolean vertical;
 
     /**
      * Creates a new TrueType font embedder for the given TTF as a PDCIDFontType2.
@@ -57,17 +59,18 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
      * @throws IOException if the TTF could not be read
      */
     PDCIDFontType2Embedder(PDDocument document, COSDictionary dict, InputStream ttfStream,
-            boolean embedSubset, PDType0Font parent) throws IOException
+            boolean embedSubset, PDType0Font parent, boolean vertical, Set<Integer> supportedCharCodes) throws IOException
     {
-        super(document, dict, ttfStream, embedSubset);
+        super(document, dict, ttfStream, embedSubset, supportedCharCodes);
         this.document = document;
         this.dict = dict;
         this.parent = parent;
+        this.vertical = vertical;
 
         // parent Type 0 font
         dict.setItem(COSName.SUBTYPE, COSName.TYPE0);
         dict.setName(COSName.BASE_FONT, fontDescriptor.getFontName());
-        dict.setItem(COSName.ENCODING, COSName.IDENTITY_H); // CID = GID
+        dict.setItem(COSName.ENCODING, vertical ? COSName.IDENTITY_V : COSName.IDENTITY_H); // CID = GID
 
         // descendant CIDFont
         cidFont = createCIDFont();
@@ -78,61 +81,32 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
         // build GID -> Unicode map
         gidToUni = new HashMap<>();
 
-
-        for (int gid = 1, max = ttf.getMaximumProfile().getNumGlyphs(); gid <= max; gid++)
+        if (supportedCharCodes != null && supportedCharCodes.size() > 0)
         {
-            // skip composite glyph components that have no code point
-            Integer codePoint = cmap.getCharacterCode(gid);
-            if (codePoint != null)
+            for (int charCode : ttf.getSupportedCharCodes())
             {
-                gidToUni.put(gid, codePoint); // CID = GID
+                gidToUni.put(cmap.getGlyphId(charCode), charCode);
+            }
+
+        }
+        else
+        {
+            for (int gid = 1, max = ttf.getMaximumProfile().getNumGlyphs(); gid <= max; gid++)
+            {
+                // skip composite glyph components that have no code point
+                Integer codePoint = cmap.getCharacterCode(gid);
+                if (codePoint != null)
+                {
+                    gidToUni.put(gid, codePoint); // CID = GID
+                }
             }
         }
 
         // ToUnicode CMap
-        buildToUnicodeCMap(null);
-    }
-
-    PDCIDFontType2Embedder(PDDocument document, COSDictionary dict, InputStream ttfStream,
-            boolean embedSubset, Set<Character> characterSet, PDType0Font parent) throws IOException
-    {
-        super(document, dict, ttfStream, embedSubset, characterSet);
-        this.document = document;
-        this.dict = dict;
-        this.parent = parent;
-
-        // parent Type 0 font
-        dict.setItem(COSName.SUBTYPE, COSName.TYPE0);
-        dict.setName(COSName.BASE_FONT, fontDescriptor.getFontName());
-        dict.setItem(COSName.ENCODING, COSName.IDENTITY_H); // CID = GID
-
-        // descendant CIDFont
-        cidFont = createCIDFont();
-        COSArray descendantFonts = new COSArray();
-        descendantFonts.add(cidFont);
-        dict.setItem(COSName.DESCENDANT_FONTS, descendantFonts);
-
-        // build GID -> Unicode map
-        gidToUni = new HashMap<>();
-
-        for (int charCode: ttf.getSupportedCharCodes()) {
-            gidToUni.put(cmap.getGlyphId(charCode), charCode);
-        }
-
-        /*
-        for (int gid = 1, max = ttf.getMaximumProfile().getNumGlyphs(); gid <= max; gid++)
+        if (!embedSubset)
         {
-            // skip composite glyph components that have no code point
-            Integer codePoint = cmap.getCharacterCode(gid);
-            if (codePoint != null)
-            {
-                gidToUni.put(gid, codePoint); // CID = GID
-            }
+            buildToUnicodeCMap(null);
         }
-         */
-
-        // ToUnicode CMap
-        buildToUnicodeCMap(null); // Charcode 돌면서 구성해주면 끝
     }
 
     /**
@@ -143,12 +117,19 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
             throws IOException
     {
         // build CID2GIDMap, because the content stream has been written with the old GIDs
-        Map<Integer, Integer> cidToGid = new HashMap<Integer, Integer>();
+        Map<Integer, Integer> cidToGid = new HashMap<>();
         for (Map.Entry<Integer, Integer> entry : gidToCid.entrySet())
         {
             int newGID = entry.getKey();
             int oldGID = entry.getValue();
             cidToGid.put(oldGID, newGID);
+        }
+
+        buildToUnicodeCMap(gidToCid);
+
+        if (vertical)
+        {
+            buildVerticalHeader(cidFont);
         }
 
         // rebuild the relevant part of the font
@@ -157,7 +138,6 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
         buildWidths(cidToGid);
         buildCIDToGIDMap(cidToGid);
         buildCIDSet(cidToGid);
-        buildToUnicodeCMap(gidToCid);
     }
 
     private void buildToUnicodeCMap(Map<Integer, Integer> newGIDToOldCID) throws IOException
@@ -245,10 +225,38 @@ final class PDCIDFontType2Embedder extends TrueTypeEmbedder
         // W - widths
         buildWidths(cidFont);
 
+        if (vertical)
+        {
+            buildVerticalHeader(cidFont);
+        }
+
         // CIDToGIDMap
         cidFont.setItem(COSName.CID_TO_GID_MAP, COSName.IDENTITY);
 
         return cidFont;
+    }
+
+    private boolean buildVerticalHeader(COSDictionary cidFont) throws IOException
+    {
+        VerticalHeaderTable vhea = ttf.getVerticalHeader();
+
+        if (vhea == null)
+        {
+            return false;
+        }
+
+        float scaling = 1000f / ttf.getHeader().getUnitsPerEm();
+
+        long v = Math.round(vhea.getAscender() * scaling);
+        long w1 = Math.round(-vhea.getAdvanceHeightMax() * scaling);
+        if (v != 880 || w1 != -1000)
+        {
+            COSArray cosDw2 = new COSArray();
+            cosDw2.add(COSInteger.get(v));
+            cosDw2.add(COSInteger.get(w1));
+            cidFont.setItem(COSName.DW2, cosDw2);
+        }
+        return true;
     }
 
     private void addNameTag(String tag) throws IOException

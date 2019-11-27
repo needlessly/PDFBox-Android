@@ -41,6 +41,8 @@ public class CmapSubtable
     private int[] glyphIdToCharacterCode;
     private final Map<Integer, Integer> characterCodeToGlyphId = new HashMap<Integer, Integer>();
 
+    private boolean isOcr = false;
+
     /**
      * This will read the required data from the stream.
      *
@@ -64,6 +66,11 @@ public class CmapSubtable
      */
     public void initSubtable(CmapTable cmap, int numGlyphs, TTFDataStream data) throws IOException
     {
+        if (cmap.font.getSupportedCharCodes().size() > 0)
+        {
+            isOcr = true;
+        }
+
         data.seek(cmap.getOffset() + subTableOffset);
         int subtableFormat = data.readUnsignedShort();
         long length;
@@ -81,6 +88,12 @@ public class CmapSubtable
             version = data.readUnsignedInt();
         }
 
+        if (isOcr)
+        {
+            processOcrType(cmap);
+            return;
+        }
+
         switch (subtableFormat)
         {
             case 0:
@@ -90,10 +103,10 @@ public class CmapSubtable
                 processSubtype2(data, numGlyphs);
                 break;
             case 4:
-                processSubtype4(data, numGlyphs, cmap);
+                processSubtype4(data, numGlyphs);
                 break;
             case 6:
-                processSubtype6(data, numGlyphs, cmap);
+                processSubtype6(data, numGlyphs);
                 break;
             case 8:
                 processSubtype8(data, numGlyphs);
@@ -113,6 +126,16 @@ public class CmapSubtable
             default:
                 throw new IOException("Unknown cmap format:" + subtableFormat);
         }
+    }
+
+    protected void processOcrType(CmapTable cmap)
+    {
+        for (int j : cmap.font.getSupportedCharCodes())
+        {
+            characterCodeToGlyphId.put(j, 1);
+        }
+
+        // glyph to charCode not needed here.
     }
 
     /**
@@ -333,33 +356,23 @@ public class CmapSubtable
      * @param numGlyphs number of glyphs to be read
      * @throws IOException If there is an error parsing the true type font.
      */
-    protected void processSubtype6(TTFDataStream data, int numGlyphs, CmapTable cmap) throws IOException
+    protected void processSubtype6(TTFDataStream data, int numGlyphs) throws IOException
     {
         int firstCode = data.readUnsignedShort();
         int entryCount = data.readUnsignedShort();
-        Map<Integer, Integer> tmpGlyphToChar = new HashMap<Integer, Integer>();
+        Map<Integer, Integer> tmpGlyphToChar = new HashMap<>();
         int[] glyphIdArray = data.readUnsignedShortArray(entryCount);
         for (int i = 0; i < entryCount; i++)
         {
-            int charCode = firstCode + i;
-
-            if (cmap.font.supportsCharCode(charCode))
-            {
-                tmpGlyphToChar.put(glyphIdArray[i], firstCode + i);
-                characterCodeToGlyphId.put((firstCode + i), glyphIdArray[i]);
-            }
+            tmpGlyphToChar.put(glyphIdArray[i], firstCode + i);
+            characterCodeToGlyphId.put((firstCode + i), glyphIdArray[i]);
         }
-
-        if (tmpGlyphToChar.size() > 0)
+        glyphIdToCharacterCode = newGlyphIdToCharacterCode(
+                Collections.max(tmpGlyphToChar.keySet()) + 1);
+        for (Entry<Integer, Integer> entry : tmpGlyphToChar.entrySet())
         {
-            glyphIdToCharacterCode = newGlyphIdToCharacterCode(
-                    Collections.max(tmpGlyphToChar.keySet()) + 1);
-
-            for (Entry<Integer, Integer> entry : tmpGlyphToChar.entrySet())
-            {
-                // link the glyphId with the right character code
-                glyphIdToCharacterCode[entry.getKey()] = entry.getValue();
-            }
+            // link the glyphId with the right character code
+            glyphIdToCharacterCode[entry.getKey()] = entry.getValue();
         }
     }
 
@@ -370,7 +383,7 @@ public class CmapSubtable
      * @param numGlyphs number of glyphs to be read
      * @throws IOException If there is an error parsing the true type font.
      */
-    protected void processSubtype4(TTFDataStream data, int numGlyphs, CmapTable cmap) throws IOException
+    protected void processSubtype4(TTFDataStream data, int numGlyphs) throws IOException
     {
         int segCountX2 = data.readUnsignedShort();
         int segCount = segCountX2 / 2;
@@ -397,30 +410,27 @@ public class CmapSubtable
             {
                 for (int j = start; j <= end; j++)
                 {
-                    if (cmap.font.supportsCharCode(j))
+                    if (rangeOffset == 0)
                     {
-                        if (rangeOffset == 0)
+                        int glyphid = (j + delta) % 65536;
+                        tmpGlyphToChar.put(glyphid, j);
+                        characterCodeToGlyphId.put(j, glyphid);
+                    }
+                    else
+                    {
+                        long glyphOffset = currentPosition + ((rangeOffset / 2) +
+                                (j - start) +
+                                (i - segCount)) * 2;
+                        data.seek(glyphOffset);
+                        int glyphIndex = data.readUnsignedShort();
+                        if (glyphIndex != 0)
                         {
-                            int glyphid = (j + delta) % 65536;
-                            tmpGlyphToChar.put(glyphid, j);
-                            characterCodeToGlyphId.put(j, glyphid);
-                        }
-                        else
-                        {
-                            long glyphOffset = currentPosition + ((rangeOffset / 2) +
-                                    (j - start) +
-                                    (i - segCount)) * 2;
-                            data.seek(glyphOffset);
-                            int glyphIndex = data.readUnsignedShort();
-                            if (glyphIndex != 0)
+                            glyphIndex += delta;
+                            glyphIndex %= 65536;
+                            if (!tmpGlyphToChar.containsKey(glyphIndex))
                             {
-                                glyphIndex += delta;
-                                glyphIndex %= 65536;
-                                if (!tmpGlyphToChar.containsKey(glyphIndex))
-                                {
-                                    tmpGlyphToChar.put(glyphIndex, j);
-                                    characterCodeToGlyphId.put(j, glyphIndex);
-                                }
+                                tmpGlyphToChar.put(glyphIndex, j);
+                                characterCodeToGlyphId.put(j, glyphIndex);
                             }
                         }
                     }
@@ -574,6 +584,8 @@ public class CmapSubtable
      */
     public int getGlyphId(int characterCode)
     {
+        if (isOcr) return 1;
+
         Integer glyphId = characterCodeToGlyphId.get(characterCode);
         return glyphId == null ? 0 : glyphId;
     }
